@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>anchorwatch.win — P2A Fee Bumping Service</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3a;
+    --text: #e0e0e8;
+    --text-dim: #8888a0;
+    --accent: #f7931a;
+    --accent-glow: rgba(247, 147, 26, 0.15);
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: #000;
+  }
+
+  .logo-text {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  nav { display: flex; gap: 1.5rem; align-items: center; }
+
+  nav a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s;
+  }
+
+  nav a:hover { color: var(--text); }
+
+  /* Hero */
+  .hero {
+    text-align: center;
+    padding: 4rem 2rem 3rem;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .hero h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 1rem;
+  }
+
+  .hero h1 span { color: var(--accent); }
+
+  .hero p {
+    color: var(--text-dim);
+    font-size: 1.1rem;
+    max-width: 560px;
+    margin: 0 auto 1.5rem;
+  }
+
+  .hero-tags {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+
+  .tag {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    color: var(--text-dim);
+  }
+
+  .p2a-explainer {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0.75rem 1rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  .p2a-explainer strong { color: var(--text); }
+
+  /* Main card */
+  .main-card {
+    max-width: 600px;
+    margin: 0 auto 3rem;
+    padding: 0 1.5rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .step-indicator {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+
+  .card-body { padding: 1.5rem; }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 0.6rem;
+    text-align: center;
+    font-size: 0.85rem;
+    cursor: pointer;
+    background: var(--surface2);
+    color: var(--text-dim);
+    border: none;
+    transition: all 0.2s;
+  }
+
+  .tab.active {
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+  }
+
+  .tab:not(.active):hover { color: var(--text); }
+
+  /* Form */
+  label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+  }
+
+  textarea, input[type="text"], input[type="number"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    resize: vertical;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus, input[type="text"]:focus, input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  textarea { min-height: 100px; }
+
+  .form-group { margin-bottom: 1rem; }
+
+  select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: var(--text);
+    font-size: 0.85rem;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238888a0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+  }
+
+  select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .btn {
+    width: 100%;
+    padding: 0.85rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 0.5rem;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .btn-primary:hover {
+    background: #ff9f33;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px var(--accent-glow);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover { border-color: var(--text-dim); }
+
+  /* Error / validation */
+  .error-msg {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--red);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    color: var(--red);
+    margin-bottom: 1rem;
+    display: none;
+  }
+
+  .error-msg.visible { display: block; }
+
+  .input-error { border-color: var(--red) !important; }
+
+  /* Quote result */
+  .quote-result {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .quote-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0;
+  }
+
+  .quote-row:not(:last-child) { border-bottom: 1px solid var(--border); }
+
+  .quote-label { color: var(--text-dim); font-size: 0.85rem; }
+
+  .quote-value {
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .quote-value.highlight {
+    color: var(--accent);
+    font-size: 1.1rem;
+  }
+
+  /* Expandable details */
+  .details-toggle {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 0.5rem 0;
+    width: 100%;
+    text-align: left;
+    transition: color 0.2s;
+  }
+
+  .details-toggle:hover { color: var(--text); }
+
+  .details-toggle::before {
+    content: '\25B6';
+    display: inline-block;
+    margin-right: 0.4rem;
+    font-size: 0.6rem;
+    transition: transform 0.2s;
+    vertical-align: middle;
+  }
+
+  .details-toggle.open::before {
+    transform: rotate(90deg);
+  }
+
+  .details-content {
+    display: none;
+    padding-top: 0.25rem;
+  }
+
+  .details-content.open { display: block; }
+
+  /* Invoice / QR */
+  .invoice-section { text-align: center; }
+
+  .qr-placeholder {
+    width: 200px;
+    height: 200px;
+    background: #fff;
+    border-radius: 8px;
+    margin: 1rem auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .qr-placeholder canvas { width: 100%; height: 100%; }
+
+  .invoice-string {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    word-break: break-all;
+    color: var(--text-dim);
+    margin: 1rem 0;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    max-height: 4.5rem;
+    overflow: hidden;
+  }
+
+  .invoice-string:hover { border-color: var(--accent); }
+
+  .copy-hint {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+  }
+
+  .waiting {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin: 1rem 0;
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Status */
+  .status-section { text-align: center; }
+
+  .status-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 28px;
+  }
+
+  .status-icon.success {
+    background: rgba(34, 197, 94, 0.15);
+    border: 2px solid var(--green);
+  }
+
+  .status-icon.pending {
+    background: rgba(59, 130, 246, 0.15);
+    border: 2px solid var(--blue);
+  }
+
+  .status-icon.error {
+    background: rgba(239, 68, 68, 0.15);
+    border: 2px solid var(--red);
+  }
+
+  .status-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .status-desc {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .txid-link {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--accent);
+    text-decoration: none;
+    word-break: break-all;
+  }
+
+  .txid-link:hover { text-decoration: underline; }
+
+  /* Info section */
+  .info-grid {
+    max-width: 900px;
+    margin: 0 auto 4rem;
+    padding: 0 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+
+  .info-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .info-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .info-card p {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+  }
+
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* Transitions */
+  .view { display: none; animation: fadeIn 0.3s ease; }
+  .view.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 1.75rem; }
+    .info-grid { grid-template-columns: 1fr; }
+    header { padding: 0.75rem 1rem; }
+    nav { gap: 0.75rem; }
+    .p2a-explainer { margin: 0 1rem; }
+  }
+
+  /* Progress bar */
+  .progress-steps {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 2rem;
+    padding: 0 1.5rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .progress-step {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  .progress-step.active { color: var(--accent); }
+  .progress-step.done { color: var(--green); }
+
+  .progress-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .progress-step.active .progress-dot {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    color: var(--accent);
+  }
+
+  .progress-step.done .progress-dot {
+    border-color: var(--green);
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--green);
+  }
+
+  .progress-line {
+    width: 40px;
+    height: 2px;
+    background: var(--border);
+    margin: 0 0.25rem;
+    align-self: center;
+  }
+
+  .progress-line.done { background: var(--green); }
+
+  /* Custom fee input */
+  .custom-fee-row {
+    display: none;
+    margin-top: 0.5rem;
+  }
+
+  .custom-fee-row.visible { display: block; }
+
+  .custom-fee-row input {
+    width: 100%;
+  }
+
+  /* Mempool table */
+  .mempool-section {
+    max-width: 960px;
+    margin: 0 auto 3rem;
+    padding: 0 1.5rem;
+  }
+
+  .mempool-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .mempool-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .mempool-stats {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .mempool-stat {
+    text-align: center;
+  }
+
+  .mempool-stat .stat-value {
+    font-family: var(--mono);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .mempool-stat .stat-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .live-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    animation: pulse 2s ease-in-out infinite;
+    vertical-align: middle;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .mempool-table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .mempool-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  .mempool-table thead {
+    background: var(--surface2);
+  }
+
+  .mempool-table th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mempool-table td {
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  .mempool-table tr:last-child td { border-bottom: none; }
+
+  .mempool-table tr {
+    transition: background 0.15s;
+  }
+
+  .mempool-table tbody tr:hover {
+    background: var(--surface2);
+  }
+
+  .mempool-table .txid-cell {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text);
+  }
+
+  .mempool-table .fee-cell {
+    font-family: var(--mono);
+  }
+
+  .fee-low { color: var(--red); }
+  .fee-med { color: var(--accent); }
+  .fee-ok { color: var(--text-dim); }
+
+  .mempool-table .age-cell {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+  }
+
+  .mempool-table .size-cell {
+    font-family: var(--mono);
+    color: var(--text-dim);
+    font-size: 0.8rem;
+  }
+
+  .btn-bump-sm {
+    padding: 0.35rem 0.75rem;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn-bump-sm:hover {
+    background: #ff9f33;
+    transform: translateY(-1px);
+  }
+
+  .mempool-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-dim);
+  }
+
+  .mempool-footer {
+    padding: 0.75rem 1rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    border-top: 1px solid var(--border);
+  }
+
+  .new-row-flash {
+    animation: rowFlash 1.5s ease;
+  }
+
+  @keyframes rowFlash {
+    0% { background: var(--accent-glow); }
+    100% { background: transparent; }
+  }
+
+  @media (max-width: 640px) {
+    .mempool-stats { gap: 0.75rem; }
+    .mempool-table { font-size: 0.75rem; }
+    .mempool-table th, .mempool-table td { padding: 0.5rem 0.5rem; }
+    .mempool-header { flex-direction: column; gap: 0.75rem; align-items: flex-start; }
+    /* Hide Size column on mobile — least useful */
+    .mempool-table th:nth-child(3),
+    .mempool-table td:nth-child(3) { display: none; }
+    .mempool-table .txid-cell { font-size: 0.7rem; }
+    .mempool-stat .stat-value { font-size: 1rem; }
+    nav { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <a href="#" class="logo" onclick="showView('input')">
+    <div class="logo-icon">A</div>
+    <div class="logo-text">anchorwatch<span>.win</span></div>
+  </a>
+  <nav>
+    <a href="#" onclick="showView('input')">Bump</a>
+    <a href="#" onclick="showView('mempool')">Mempool</a>
+    <a href="#" onclick="showView('status-check')">Status</a>
+    <a href="https://github.com" target="_blank">GitHub</a>
+  </nav>
+</header>
+
+<!-- Hero -->
+<div class="hero" id="hero">
+  <h1>Bump <span>P2A anchors</span>.<br>Pay with <span>Lightning</span>.</h1>
+  <p>CPFP fee-bump transactions that have Pay-to-Anchor outputs. We spend the anyone-can-spend anchor — no private keys needed.</p>
+  <div class="hero-tags">
+    <span class="tag">P2A (BIP 433)</span>
+    <span class="tag">CPFP</span>
+    <span class="tag">Lightning Network</span>
+    <span class="tag">Open source</span>
+  </div>
+  <div class="p2a-explainer">
+    <strong>Does my transaction have a P2A anchor?</strong>
+    P2A outputs are added by wallets and LN implementations that support BIP 433.
+    If your transaction doesn't have one, this service can't help — we need the
+    anyone-can-spend anchor output to build the CPFP child.
+  </div>
+</div>
+
+<!-- Progress -->
+<div class="progress-steps" id="progressSteps" style="display:none;">
+  <div class="progress-step active" id="ps1">
+    <div class="progress-dot">1</div>
+    <span>Quote</span>
+  </div>
+  <div class="progress-line" id="pl1"></div>
+  <div class="progress-step" id="ps2">
+    <div class="progress-dot">2</div>
+    <span>Pay</span>
+  </div>
+  <div class="progress-line" id="pl2"></div>
+  <div class="progress-step" id="ps3">
+    <div class="progress-dot">3</div>
+    <span>Bump</span>
+  </div>
+  <div class="progress-line" id="pl3"></div>
+  <div class="progress-step" id="ps4">
+    <div class="progress-dot">4</div>
+    <span>Done</span>
+  </div>
+</div>
+
+<!-- Main Card -->
+<div class="main-card">
+  <div class="card">
+
+    <!-- View 1: Input -->
+    <div class="view active" id="view-input">
+      <div class="card-header">
+        <h2>Get a bump quote</h2>
+        <span class="step-indicator">Step 1 of 4</span>
+      </div>
+      <div class="card-body">
+        <div class="tabs">
+          <button class="tab active" onclick="setInputMode('txid')">Txid</button>
+          <button class="tab" onclick="setInputMode('rawtx')">Raw Tx Hex</button>
+        </div>
+
+        <div class="form-group" id="txid-input">
+          <label for="txid">Transaction ID</label>
+          <input type="text" id="txid" placeholder="64-character hex txid" spellcheck="false" maxlength="64">
+        </div>
+
+        <div class="form-group" id="rawtx-input" style="display:none;">
+          <label for="rawtx">Raw Transaction Hex</label>
+          <textarea id="rawtx" placeholder="02000000..." spellcheck="false"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="target-fee">Target Fee Rate</label>
+          <select id="target-fee" onchange="onFeeSelectChange()">
+            <option value="next">Next block</option>
+            <option value="3">Within 3 blocks</option>
+            <option value="6">Within 6 blocks</option>
+            <option value="custom">Custom sat/vB...</option>
+          </select>
+          <div class="custom-fee-row" id="custom-fee-row">
+            <input type="number" id="custom-fee-input" placeholder="e.g. 15" min="1" max="1000">
+          </div>
+        </div>
+
+        <div class="error-msg" id="input-error"></div>
+
+        <button class="btn btn-primary" onclick="getQuote()">Get Quote</button>
+      </div>
+    </div>
+
+    <!-- View 2: Quote -->
+    <div class="view" id="view-quote">
+      <div class="card-header">
+        <h2>Bump Quote</h2>
+        <span class="step-indicator">Step 1 of 4</span>
+      </div>
+      <div class="card-body">
+        <div class="quote-result">
+          <div class="quote-row">
+            <span class="quote-label">Current fee rate</span>
+            <span class="quote-value" id="q-current-fee">2 sat/vB</span>
+          </div>
+          <div class="quote-row">
+            <span class="quote-label">Target fee rate</span>
+            <span class="quote-value" id="q-target-fee">12 sat/vB</span>
+          </div>
+          <div class="quote-row">
+            <span class="quote-label">Service fee (5%)</span>
+            <span class="quote-value" id="q-service-fee">179 sats</span>
+          </div>
+          <div class="quote-row">
+            <span class="quote-label">Total</span>
+            <span class="quote-value highlight" id="q-total">3,749 sats</span>
+          </div>
+        </div>
+
+        <button class="details-toggle" onclick="toggleDetails()">Technical details</button>
+        <div class="details-content" id="quote-details">
+          <div class="quote-result" style="margin-top:0.25rem;">
+            <div class="quote-row">
+              <span class="quote-label">Parent tx size</span>
+              <span class="quote-value" id="q-parent-size">225 vB</span>
+            </div>
+            <div class="quote-row">
+              <span class="quote-label">CPFP child size</span>
+              <span class="quote-value" id="q-child-size">~110 vB</span>
+            </div>
+            <div class="quote-row">
+              <span class="quote-label">P2A anchor output</span>
+              <span class="quote-value" id="q-anchor-idx">vout:2</span>
+            </div>
+            <div class="quote-row">
+              <span class="quote-label">Fee deficit to cover</span>
+              <span class="quote-value" id="q-deficit">3,570 sats</span>
+            </div>
+          </div>
+        </div>
+
+        <p style="font-size:0.75rem;color:var(--text-dim);margin:0.75rem 0 1rem;">
+          Quote valid for 5 minutes. Price may change with fee market.
+        </p>
+        <button class="btn btn-primary" onclick="requestInvoice()">Pay with Lightning</button>
+        <button class="btn btn-secondary" onclick="showView('input')" style="margin-top:0.5rem;">Back</button>
+      </div>
+    </div>
+
+    <!-- View 3: Payment -->
+    <div class="view" id="view-payment">
+      <div class="card-header">
+        <h2>Pay Invoice</h2>
+        <span class="step-indicator">Step 2 of 4</span>
+      </div>
+      <div class="card-body invoice-section">
+        <div class="qr-placeholder" id="qr-box">
+          <canvas id="qr-canvas" width="200" height="200"></canvas>
+        </div>
+        <div class="invoice-string" id="invoice-str" onclick="copyInvoice()">
+          lnbc...
+        </div>
+        <div class="copy-hint" id="copy-hint">Click to copy invoice</div>
+        <div class="waiting">
+          <div class="spinner"></div>
+          <span>Waiting for payment...</span>
+        </div>
+        <p style="font-size:0.75rem;color:var(--text-dim);margin-bottom:1rem;">
+          Hold invoice — auto-refunds if the bump fails.
+        </p>
+        <button class="btn btn-secondary" onclick="simulatePayment()">Simulate Payment (demo)</button>
+      </div>
+    </div>
+
+    <!-- View 4: Broadcasting -->
+    <div class="view" id="view-broadcasting">
+      <div class="card-header">
+        <h2>Broadcasting</h2>
+        <span class="step-indicator">Step 3 of 4</span>
+      </div>
+      <div class="card-body status-section">
+        <div class="status-icon pending">
+          <div class="spinner" style="width:28px;height:28px;border-width:3px;"></div>
+        </div>
+        <div class="status-title">Building CPFP child...</div>
+        <div class="status-desc">
+          Spending P2A anchor output and broadcasting package to the network.
+        </div>
+        <div class="waiting">
+          <div class="spinner"></div>
+          <span>This usually takes a few seconds</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- View 5: Confirmed -->
+    <div class="view" id="view-confirmed">
+      <div class="card-header">
+        <h2>Bump Complete</h2>
+        <span class="step-indicator">Step 4 of 4</span>
+      </div>
+      <div class="card-body status-section">
+        <div class="status-icon success">&#10003;</div>
+        <div class="status-title">Transaction bumped</div>
+        <div class="status-desc">
+          CPFP child broadcast successfully. Your transaction should confirm within your target window.
+        </div>
+        <div class="quote-result" style="text-align:left;margin-top:1rem;">
+          <div class="quote-row">
+            <span class="quote-label">Parent txid</span>
+            <span class="quote-value" style="font-size:0.7rem;">
+              <a href="#" class="txid-link" id="c-parent-txid">a1b2c3d4...e5f6</a>
+            </span>
+          </div>
+          <div class="quote-row">
+            <span class="quote-label">CPFP child txid</span>
+            <span class="quote-value" style="font-size:0.7rem;">
+              <a href="#" class="txid-link" id="c-child-txid">f6e5d4c3...b2a1</a>
+            </span>
+          </div>
+          <div class="quote-row">
+            <span class="quote-label">Effective fee rate</span>
+            <span class="quote-value" id="c-feerate">12.1 sat/vB</span>
+          </div>
+          <div class="quote-row">
+            <span class="quote-label">Paid</span>
+            <span class="quote-value highlight" id="c-paid">3,749 sats</span>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="showView('input')" style="margin-top:1rem;">Bump another</button>
+      </div>
+    </div>
+
+    <!-- View: Error (no P2A) -->
+    <div class="view" id="view-error">
+      <div class="card-header">
+        <h2>Can't bump this transaction</h2>
+      </div>
+      <div class="card-body status-section">
+        <div class="status-icon error">&#10007;</div>
+        <div class="status-title" id="error-title">No P2A anchor output found</div>
+        <div class="status-desc" id="error-desc">
+          This transaction doesn't have a Pay-to-Anchor (BIP 433) output.
+          We can only CPFP fee-bump transactions that include an anyone-can-spend
+          P2A anchor output.
+        </div>
+        <button class="btn btn-primary" onclick="showView('input')">Try another</button>
+      </div>
+    </div>
+
+    <!-- View: Status Check -->
+    <div class="view" id="view-status-check">
+      <div class="card-header">
+        <h2>Check bump status</h2>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label for="order-id">Order ID or Parent Txid</label>
+          <input type="text" id="order-id" placeholder="Enter your bump order ID or parent txid" spellcheck="false">
+        </div>
+        <div class="error-msg" id="status-error"></div>
+        <button class="btn btn-primary" onclick="checkStatus()">Check Status</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Mempool P2A View -->
+<div class="mempool-section" id="mempool-section" style="display:none;">
+  <div class="mempool-header">
+    <h2><span class="live-dot"></span>P2A Outputs in Mempool</h2>
+    <div class="mempool-stats">
+      <div class="mempool-stat">
+        <div class="stat-value" id="mp-count">0</div>
+        <div class="stat-label">P2A txs</div>
+      </div>
+      <div class="mempool-stat">
+        <div class="stat-value" id="mp-total-fees">0</div>
+        <div class="stat-label">sats bumpable</div>
+      </div>
+      <div class="mempool-stat">
+        <div class="stat-value" id="mp-avg-fee">0</div>
+        <div class="stat-label">avg sat/vB</div>
+      </div>
+    </div>
+  </div>
+  <div class="mempool-table-wrap">
+    <table class="mempool-table">
+      <thead>
+        <tr>
+          <th>Txid</th>
+          <th>Fee Rate</th>
+          <th>Size</th>
+          <th>Age</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="mp-tbody">
+      </tbody>
+    </table>
+    <div class="mempool-footer" id="mp-footer">
+      Polling every 10s &mdash; showing all P2A (BIP 433) outputs in the mempool
+    </div>
+  </div>
+</div>
+
+<!-- Info Grid -->
+<div class="info-grid" id="info-grid">
+  <div class="info-card">
+    <div class="info-icon">&#9875;</div>
+    <h3>P2A Anchors</h3>
+    <p>We spend the anyone-can-spend anchor output (BIP 433) attached to your transaction. No keys needed, no custody involved.</p>
+  </div>
+  <div class="info-card">
+    <div class="info-icon">&#9889;</div>
+    <h3>Lightning Payments</h3>
+    <p>Pay with Lightning for instant settlement. Hold invoices auto-refund if the bump fails. No on-chain deposit needed.</p>
+  </div>
+  <div class="info-card">
+    <div class="info-icon">&#128274;</div>
+    <h3>Open Source</h3>
+    <p>Every bump creates a verifiable on-chain CPFP child. Full source code available. Don't trust, verify.</p>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <p>anchorwatch.win &mdash; P2A fee-bumping service &mdash; <a href="https://github.com" target="_blank">GitHub</a></p>
+  <p style="margin-top:0.5rem;">Built with Bitcoin Core 28.0+ &middot; Core Lightning &middot; RawRelay</p>
+</footer>
+
+<script>
+  const HEX_RE = /^[0-9a-fA-F]+$/;
+
+  // -- View management --
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const target = document.getElementById('view-' + name);
+    if (target) target.classList.add('active');
+
+    const hero = document.getElementById('hero');
+    const progress = document.getElementById('progressSteps');
+    const mempoolSection = document.getElementById('mempool-section');
+    const infoGrid = document.getElementById('info-grid');
+
+    if (name === 'mempool') {
+      hero.style.display = 'none';
+      progress.style.display = 'none';
+      mempoolSection.style.display = 'block';
+      infoGrid.style.display = 'none';
+      if (!window._mempoolStarted) startMempoolSim();
+    } else if (name === 'input' || name === 'status-check') {
+      hero.style.display = 'block';
+      progress.style.display = 'none';
+      mempoolSection.style.display = 'none';
+      infoGrid.style.display = 'grid';
+    } else if (name === 'error') {
+      hero.style.display = 'none';
+      progress.style.display = 'none';
+      mempoolSection.style.display = 'none';
+      infoGrid.style.display = 'grid';
+    } else {
+      hero.style.display = 'none';
+      progress.style.display = 'flex';
+      mempoolSection.style.display = 'none';
+      infoGrid.style.display = 'grid';
+    }
+
+    // Map views to progress step indices
+    const stepMap = { quote: 0, payment: 1, broadcasting: 2, confirmed: 3 };
+    const idx = stepMap[name];
+    if (idx !== undefined) {
+      for (let i = 1; i <= 4; i++) {
+        const ps = document.getElementById('ps' + i);
+        const pl = document.getElementById('pl' + i);
+        ps.className = 'progress-step';
+        if (pl) pl.className = 'progress-line';
+        if (i - 1 < idx) { ps.classList.add('done'); if (pl) pl.classList.add('done'); }
+        else if (i - 1 === idx) { ps.classList.add('active'); }
+      }
+    }
+  }
+
+  // -- Input mode tabs --
+  function setInputMode(mode) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('txid-input').style.display = mode === 'txid' ? 'block' : 'none';
+    document.getElementById('rawtx-input').style.display = mode === 'rawtx' ? 'block' : 'none';
+    clearInputError();
+  }
+
+  // -- Custom fee rate toggle --
+  function onFeeSelectChange() {
+    const sel = document.getElementById('target-fee');
+    const row = document.getElementById('custom-fee-row');
+    if (sel.value === 'custom') {
+      row.classList.add('visible');
+      document.getElementById('custom-fee-input').focus();
+    } else {
+      row.classList.remove('visible');
+    }
+  }
+
+  // -- Validation --
+  function clearInputError() {
+    const err = document.getElementById('input-error');
+    err.classList.remove('visible');
+    err.textContent = '';
+    document.getElementById('txid').classList.remove('input-error');
+    document.getElementById('rawtx').classList.remove('input-error');
+  }
+
+  function showInputError(msg) {
+    const err = document.getElementById('input-error');
+    err.textContent = msg;
+    err.classList.add('visible');
+  }
+
+  function validateInput() {
+    clearInputError();
+    const isTxid = document.getElementById('txid-input').style.display !== 'none';
+
+    if (isTxid) {
+      const val = document.getElementById('txid').value.trim();
+      if (!val) {
+        showInputError('Enter a transaction ID.');
+        document.getElementById('txid').classList.add('input-error');
+        return false;
+      }
+      if (val.length !== 64 || !HEX_RE.test(val)) {
+        showInputError('Transaction ID must be exactly 64 hex characters.');
+        document.getElementById('txid').classList.add('input-error');
+        return false;
+      }
+    } else {
+      const val = document.getElementById('rawtx').value.trim();
+      if (!val) {
+        showInputError('Enter raw transaction hex.');
+        document.getElementById('rawtx').classList.add('input-error');
+        return false;
+      }
+      if (val.length < 20 || !HEX_RE.test(val)) {
+        showInputError('Invalid hex. Paste the full raw transaction.');
+        document.getElementById('rawtx').classList.add('input-error');
+        return false;
+      }
+    }
+
+    // Validate custom fee
+    if (document.getElementById('target-fee').value === 'custom') {
+      const customFee = parseInt(document.getElementById('custom-fee-input').value);
+      if (!customFee || customFee < 1) {
+        showInputError('Enter a custom fee rate (minimum 1 sat/vB).');
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // -- Mock data generators --
+  function randomHex(len) {
+    const chars = '0123456789abcdef';
+    let result = '';
+    for (let i = 0; i < len; i++) result += chars[Math.floor(Math.random() * 16)];
+    return result;
+  }
+
+  function randomAmount(min, max) {
+    return Math.floor(Math.random() * (max - min) + min);
+  }
+
+  // -- Mock P2A detection --
+  // In production this calls the backend which decodes the tx and scans for 51024e73.
+  // For the demo, ~80% chance it "finds" a P2A, ~20% it doesn't (to show the error state).
+  function mockHasP2A() {
+    return Math.random() > 0.2;
+  }
+
+  // -- Get Quote (mock) --
+  function getQuote() {
+    if (!validateInput()) return;
+
+    // Simulate backend lookup
+    if (!mockHasP2A()) {
+      showErrorView(
+        'No P2A anchor output found',
+        'This transaction doesn\'t have a Pay-to-Anchor (BIP 433) output. ' +
+        'We can only CPFP fee-bump transactions that include an anyone-can-spend P2A anchor. ' +
+        'Your wallet or LN implementation needs to support BIP 433 for this to work.'
+      );
+      return;
+    }
+
+    const parentSize = randomAmount(180, 450);
+    const currentFee = randomAmount(1, 5);
+    const sel = document.getElementById('target-fee').value;
+    let targetFee;
+    if (sel === 'custom') {
+      targetFee = parseInt(document.getElementById('custom-fee-input').value) || 10;
+    } else if (sel === 'next') {
+      targetFee = randomAmount(10, 18);
+    } else if (sel === '3') {
+      targetFee = randomAmount(6, 12);
+    } else {
+      targetFee = randomAmount(3, 8);
+    }
+
+    // Ensure target > current
+    if (targetFee <= currentFee) targetFee = currentFee + randomAmount(2, 6);
+
+    const childSize = 110;
+    const deficit = (targetFee * (parentSize + childSize)) - (currentFee * parentSize);
+    const serviceFee = Math.ceil(deficit * 0.05);
+    const total = deficit + serviceFee;
+
+    document.getElementById('q-current-fee').textContent = currentFee + ' sat/vB';
+    document.getElementById('q-target-fee').textContent = targetFee + ' sat/vB';
+    document.getElementById('q-service-fee').textContent = serviceFee.toLocaleString() + ' sats';
+    document.getElementById('q-total').textContent = total.toLocaleString() + ' sats';
+
+    // Technical details
+    document.getElementById('q-parent-size').textContent = parentSize + ' vB';
+    document.getElementById('q-child-size').textContent = '~' + childSize + ' vB';
+    document.getElementById('q-anchor-idx').textContent = 'vout:' + randomAmount(1, 4);
+    document.getElementById('q-deficit').textContent = deficit.toLocaleString() + ' sats';
+
+    // Collapse details by default
+    document.getElementById('quote-details').classList.remove('open');
+    document.querySelector('.details-toggle').classList.remove('open');
+
+    window._mockTotal = total;
+    window._mockTargetFee = targetFee;
+    showView('quote');
+  }
+
+  // -- Show error view --
+  function showErrorView(title, desc) {
+    document.getElementById('error-title').textContent = title;
+    document.getElementById('error-desc').textContent = desc;
+    showView('error');
+  }
+
+  // -- Toggle technical details --
+  function toggleDetails() {
+    const btn = document.querySelector('.details-toggle');
+    const content = document.getElementById('quote-details');
+    btn.classList.toggle('open');
+    content.classList.toggle('open');
+  }
+
+  // -- Request Invoice (mock) --
+  function requestInvoice() {
+    const mockInvoice = 'lnbc' + window._mockTotal + 'n1pj' + randomHex(200);
+    document.getElementById('invoice-str').textContent = mockInvoice;
+    document.getElementById('copy-hint').textContent = 'Click to copy invoice';
+    drawMockQR();
+    showView('payment');
+  }
+
+  // -- Copy invoice --
+  function copyInvoice() {
+    const str = document.getElementById('invoice-str').textContent;
+    navigator.clipboard.writeText(str).then(() => {
+      const el = document.getElementById('invoice-str');
+      el.style.borderColor = 'var(--green)';
+      document.getElementById('copy-hint').textContent = 'Copied!';
+      setTimeout(() => {
+        el.style.borderColor = '';
+        document.getElementById('copy-hint').textContent = 'Click to copy invoice';
+      }, 2000);
+    });
+  }
+
+  // -- Draw mock QR code --
+  function drawMockQR() {
+    const canvas = document.getElementById('qr-canvas');
+    const ctx = canvas.getContext('2d');
+    const size = 200;
+    const modules = 25;
+    const cellSize = size / modules;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#000000';
+
+    function drawFinder(x, y) {
+      for (let i = 0; i < 7; i++) {
+        for (let j = 0; j < 7; j++) {
+          if (i === 0 || i === 6 || j === 0 || j === 6 ||
+              (i >= 2 && i <= 4 && j >= 2 && j <= 4)) {
+            ctx.fillRect((x + j) * cellSize, (y + i) * cellSize, cellSize, cellSize);
+          }
+        }
+      }
+    }
+
+    drawFinder(0, 0);
+    drawFinder(modules - 7, 0);
+    drawFinder(0, modules - 7);
+
+    for (let i = 0; i < modules; i++) {
+      for (let j = 0; j < modules; j++) {
+        if ((i < 8 && j < 8) || (i < 8 && j > modules - 9) || (i > modules - 9 && j < 8)) continue;
+        if (Math.random() > 0.5) {
+          ctx.fillRect(j * cellSize, i * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+  }
+
+  // -- Simulate payment (demo mode) --
+  function simulatePayment() {
+    showView('broadcasting');
+    setTimeout(() => {
+      const parentTxid = randomHex(64);
+      const childTxid = randomHex(64);
+      document.getElementById('c-parent-txid').textContent = parentTxid.slice(0, 16) + '...' + parentTxid.slice(-8);
+      document.getElementById('c-child-txid').textContent = childTxid.slice(0, 16) + '...' + childTxid.slice(-8);
+      document.getElementById('c-feerate').textContent = (window._mockTargetFee || 12) + '.0 sat/vB';
+      document.getElementById('c-paid').textContent = (window._mockTotal || 3749).toLocaleString() + ' sats';
+      showView('confirmed');
+    }, 2500);
+  }
+
+  // -- Check status (mock) --
+  function checkStatus() {
+    const val = document.getElementById('order-id').value.trim();
+    const err = document.getElementById('status-error');
+    if (!val) {
+      err.textContent = 'Enter an order ID or parent txid.';
+      err.classList.add('visible');
+      return;
+    }
+    err.classList.remove('visible');
+    // In production: GET /bump/status/{id}
+    // Demo: show not-found
+    showErrorView(
+      'Order not found',
+      'No bump order matches "' + val.slice(0, 20) + (val.length > 20 ? '...' : '') +
+      '". Check your order ID or parent txid and try again.'
+    );
+  }
+
+  // -- Clear validation on input --
+  document.getElementById('txid').addEventListener('input', clearInputError);
+  document.getElementById('rawtx').addEventListener('input', clearInputError);
+
+  // -- Mempool P2A simulation --
+  window._mempoolStarted = false;
+  window._mempoolTxs = [];
+
+  function generateMempoolTx() {
+    const txid = randomHex(64);
+    const feeRate = randomAmount(1, 8);
+    const size = randomAmount(150, 600);
+    const ageSeconds = randomAmount(5, 7200);
+    return { txid, feeRate, size, ageSeconds, addedAt: Date.now() };
+  }
+
+  function formatAge(seconds) {
+    if (seconds < 60) return seconds + 's';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ' + (seconds % 60) + 's';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return h + 'h ' + m + 'm';
+  }
+
+  function feeClass(rate) {
+    if (rate <= 2) return 'fee-low';
+    if (rate <= 4) return 'fee-med';
+    return 'fee-ok';
+  }
+
+  function renderMempoolTable() {
+    const tbody = document.getElementById('mp-tbody');
+    // Update ages
+    const now = Date.now();
+    window._mempoolTxs.forEach(tx => {
+      tx._displayAge = tx.ageSeconds + Math.floor((now - tx.addedAt) / 1000);
+    });
+
+    // Sort by fee rate ascending (lowest = most stuck = most likely to need bump)
+    const sorted = [...window._mempoolTxs].sort((a, b) => a.feeRate - b.feeRate);
+
+    tbody.innerHTML = sorted.map(tx => {
+      const isMobile = window.innerWidth <= 640;
+      const shortTxid = isMobile
+        ? tx.txid.slice(0, 6) + '...' + tx.txid.slice(-4)
+        : tx.txid.slice(0, 12) + '...' + tx.txid.slice(-8);
+      return `<tr class="${tx._isNew ? 'new-row-flash' : ''}">
+        <td class="txid-cell">${shortTxid}</td>
+        <td class="fee-cell ${feeClass(tx.feeRate)}">${tx.feeRate} sat/vB</td>
+        <td class="size-cell">${tx.size} vB</td>
+        <td class="age-cell">${formatAge(tx._displayAge)}</td>
+        <td><button class="btn-bump-sm" onclick="bumpFromMempool('${tx.txid}')">Bump</button></td>
+      </tr>`;
+    }).join('');
+
+    // Clear new flags
+    window._mempoolTxs.forEach(tx => tx._isNew = false);
+
+    // Update stats
+    document.getElementById('mp-count').textContent = window._mempoolTxs.length;
+    const totalDeficit = window._mempoolTxs.reduce((sum, tx) => {
+      const targetFee = 10;
+      const childSize = 110;
+      return sum + Math.max(0, (targetFee * (tx.size + childSize)) - (tx.feeRate * tx.size));
+    }, 0);
+    document.getElementById('mp-total-fees').textContent = totalDeficit.toLocaleString();
+    const avgFee = window._mempoolTxs.length
+      ? (window._mempoolTxs.reduce((s, t) => s + t.feeRate, 0) / window._mempoolTxs.length).toFixed(1)
+      : '0';
+    document.getElementById('mp-avg-fee').textContent = avgFee;
+  }
+
+  function startMempoolSim() {
+    window._mempoolStarted = true;
+
+    // Seed with some initial txs
+    const count = randomAmount(4, 9);
+    for (let i = 0; i < count; i++) {
+      window._mempoolTxs.push(generateMempoolTx());
+    }
+    renderMempoolTable();
+
+    // Simulate polling — add/remove txs periodically
+    setInterval(() => {
+      // ~40% chance a new tx appears
+      if (Math.random() < 0.4) {
+        const tx = generateMempoolTx();
+        tx.ageSeconds = randomAmount(1, 30);
+        tx._isNew = true;
+        window._mempoolTxs.push(tx);
+      }
+
+      // ~15% chance a tx gets confirmed (disappears)
+      if (window._mempoolTxs.length > 3 && Math.random() < 0.15) {
+        // Higher fee txs more likely to confirm
+        const sorted = [...window._mempoolTxs].sort((a, b) => b.feeRate - a.feeRate);
+        const removed = sorted[0];
+        window._mempoolTxs = window._mempoolTxs.filter(t => t.txid !== removed.txid);
+      }
+
+      // Cap at ~20
+      if (window._mempoolTxs.length > 20) {
+        window._mempoolTxs = window._mempoolTxs.slice(-20);
+      }
+
+      renderMempoolTable();
+    }, 10000);
+
+    // Update ages every second
+    setInterval(() => {
+      if (document.getElementById('mempool-section').style.display !== 'none') {
+        renderMempoolTable();
+      }
+    }, 5000);
+  }
+
+  function bumpFromMempool(txid) {
+    document.getElementById('txid').value = txid;
+    document.getElementById('txid-input').style.display = 'block';
+    document.getElementById('rawtx-input').style.display = 'none';
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', i === 0);
+    });
+    showView('input');
+  }
+</script>
+</body>
+</html>
