@@ -1422,6 +1422,21 @@
   // -- Clear validation on input --
   document.getElementById('txid').addEventListener('input', clearInputError);
 
+  // -- Network detection for mempool.space links --
+  function getNetwork() {
+    const host = window.location.hostname;
+    if (host.startsWith('signet.')) return 'signet';
+    if (host.startsWith('testnet4.')) return 'testnet4';
+    return 'mainnet';
+  }
+
+  function getMempoolUrl(txid) {
+    const net = getNetwork();
+    if (net === 'signet') return `https://mempool.space/signet/tx/${txid}`;
+    if (net === 'testnet4') return `https://mempool.space/testnet4/tx/${txid}`;
+    return `https://mempool.space/tx/${txid}`;
+  }
+
   // -- Mempool P2A live data --
   window._mempoolStarted = false;
   window._mempoolTxs = [];
@@ -1446,12 +1461,9 @@
     const sorted = [...window._mempoolTxs].sort((a, b) => a.feeRate - b.feeRate);
 
     tbody.innerHTML = sorted.map(tx => {
-      const isMobile = window.innerWidth <= 640;
-      const shortTxid = isMobile
-        ? tx.txid.slice(0, 6) + '...' + tx.txid.slice(-4)
-        : tx.txid.slice(0, 12) + '...' + tx.txid.slice(-8);
+      const mempoolUrl = getMempoolUrl(tx.txid);
       return `<tr class="${tx._isNew ? 'new-row-flash' : ''}">
-        <td class="txid-cell">${shortTxid}</td>
+        <td class="txid-cell"><a href="${mempoolUrl}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='inherit'">${tx.txid}</a></td>
         <td class="fee-cell ${feeClass(tx.feeRate)}">${tx.feeRate} sat/vB</td>
         <td class="size-cell">${tx.size} vB</td>
         <td class="age-cell">${tx.age}</td>
