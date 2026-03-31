@@ -1422,17 +1422,10 @@
   // -- Clear validation on input --
   document.getElementById('txid').addEventListener('input', clearInputError);
 
-  // -- Mempool P2A simulation --
+  // -- Mempool P2A live data --
   window._mempoolStarted = false;
   window._mempoolTxs = [];
-
-  function generateMempoolTx() {
-    const txid = randomHex(64);
-    const feeRate = randomAmount(1, 8);
-    const size = randomAmount(150, 600);
-    const ageSeconds = randomAmount(5, 7200);
-    return { txid, feeRate, size, ageSeconds, addedAt: Date.now() };
-  }
+  window._knownTxids = new Set();
 
   function formatAge(seconds) {
     if (seconds < 60) return seconds + 's';
@@ -1450,13 +1443,6 @@
 
   function renderMempoolTable() {
     const tbody = document.getElementById('mp-tbody');
-    // Update ages
-    const now = Date.now();
-    window._mempoolTxs.forEach(tx => {
-      tx._displayAge = tx.ageSeconds + Math.floor((now - tx.addedAt) / 1000);
-    });
-
-    // Sort by fee rate ascending (lowest = most stuck = most likely to need bump)
     const sorted = [...window._mempoolTxs].sort((a, b) => a.feeRate - b.feeRate);
 
     tbody.innerHTML = sorted.map(tx => {
@@ -1468,70 +1454,42 @@
         <td class="txid-cell">${shortTxid}</td>
         <td class="fee-cell ${feeClass(tx.feeRate)}">${tx.feeRate} sat/vB</td>
         <td class="size-cell">${tx.size} vB</td>
-        <td class="age-cell">${formatAge(tx._displayAge)}</td>
+        <td class="age-cell">${tx.age}</td>
         <td><button class="btn-bump-sm" onclick="bumpFromMempool('${tx.txid}')">Bump</button></td>
       </tr>`;
     }).join('');
 
-    // Clear new flags
     window._mempoolTxs.forEach(tx => tx._isNew = false);
 
-    // Update stats
     document.getElementById('mp-count').textContent = window._mempoolTxs.length;
-    const totalDeficit = window._mempoolTxs.reduce((sum, tx) => {
-      const targetFee = 10;
-      const childSize = 110;
-      return sum + Math.max(0, (targetFee * (tx.size + childSize)) - (tx.feeRate * tx.size));
-    }, 0);
-    document.getElementById('mp-total-fees').textContent = totalDeficit.toLocaleString();
+    const totalBumpable = window._mempoolTxs.reduce((sum, tx) => sum + tx.size * tx.feeRate, 0);
+    document.getElementById('mp-total-fees').textContent = totalBumpable.toLocaleString();
     const avgFee = window._mempoolTxs.length
       ? (window._mempoolTxs.reduce((s, t) => s + t.feeRate, 0) / window._mempoolTxs.length).toFixed(1)
       : '0';
     document.getElementById('mp-avg-fee').textContent = avgFee;
   }
 
+  async function fetchP2A() {
+    try {
+      const resp = await fetch('/api/p2a');
+      const data = await resp.json();
+      const newTxids = new Set(data.txs.map(t => t.txid));
+      data.txs.forEach(tx => {
+        tx._isNew = !window._knownTxids.has(tx.txid);
+      });
+      window._mempoolTxs = data.txs;
+      window._knownTxids = newTxids;
+      renderMempoolTable();
+    } catch (err) {
+      console.error('Failed to fetch P2A data:', err);
+    }
+  }
+
   function startMempoolSim() {
     window._mempoolStarted = true;
-
-    // Seed with some initial txs
-    const count = randomAmount(4, 9);
-    for (let i = 0; i < count; i++) {
-      window._mempoolTxs.push(generateMempoolTx());
-    }
-    renderMempoolTable();
-
-    // Simulate polling — add/remove txs periodically
-    setInterval(() => {
-      // ~40% chance a new tx appears
-      if (Math.random() < 0.4) {
-        const tx = generateMempoolTx();
-        tx.ageSeconds = randomAmount(1, 30);
-        tx._isNew = true;
-        window._mempoolTxs.push(tx);
-      }
-
-      // ~15% chance a tx gets confirmed (disappears)
-      if (window._mempoolTxs.length > 3 && Math.random() < 0.15) {
-        // Higher fee txs more likely to confirm
-        const sorted = [...window._mempoolTxs].sort((a, b) => b.feeRate - a.feeRate);
-        const removed = sorted[0];
-        window._mempoolTxs = window._mempoolTxs.filter(t => t.txid !== removed.txid);
-      }
-
-      // Cap at ~20
-      if (window._mempoolTxs.length > 20) {
-        window._mempoolTxs = window._mempoolTxs.slice(-20);
-      }
-
-      renderMempoolTable();
-    }, 10000);
-
-    // Update ages every second
-    setInterval(() => {
-      if (document.getElementById('mempool-section').style.display !== 'none') {
-        renderMempoolTable();
-      }
-    }, 5000);
+    fetchP2A();
+    setInterval(fetchP2A, 10000);
   }
 
   function bumpFromMempool(txid) {

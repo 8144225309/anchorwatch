@@ -1,0 +1,14 @@
+{
+  "name": "anchorwatch-scanner",
+  "version": "0.1.0",
+  "description": "P2A mempool scanner for anchorwatch.win",
+  "main": "scanner.js",
+  "scripts": {
+    "start": "node scanner.js"
+  },
+  "dependencies": {
+    "zeromq": "^6.1.2",
+    "express": "^4.21.0",
+    "cors": "^2.8.5"
+  }
+}
