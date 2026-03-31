@@ -812,7 +812,7 @@
     <a href="#" onclick="showView('input')">Bump</a>
     <a href="#" onclick="showView('mempool')">Mempool</a>
     <a href="#" onclick="showView('status-check')">Status</a>
-    <a href="https://github.com" target="_blank">GitHub</a>
+    <a href="https://github.com/8144225309/anchorwatch" target="_blank">GitHub</a>
   </nav>
 </header>
 
@@ -868,19 +868,9 @@
         <span class="step-indicator">Step 1 of 4</span>
       </div>
       <div class="card-body">
-        <div class="tabs">
-          <button class="tab active" onclick="setInputMode('txid')">Txid</button>
-          <button class="tab" onclick="setInputMode('rawtx')">Raw Tx Hex</button>
-        </div>
-
         <div class="form-group" id="txid-input">
           <label for="txid">Transaction ID</label>
           <input type="text" id="txid" placeholder="64-character hex txid" spellcheck="false" maxlength="64">
-        </div>
-
-        <div class="form-group" id="rawtx-input" style="display:none;">
-          <label for="rawtx">Raw Transaction Hex</label>
-          <textarea id="rawtx" placeholder="02000000..." spellcheck="false"></textarea>
         </div>
 
         <div class="form-group">
@@ -1137,7 +1127,7 @@
 
 <!-- Footer -->
 <footer>
-  <p>anchorwatch.win &mdash; P2A fee-bumping service &mdash; <a href="https://github.com" target="_blank">GitHub</a></p>
+  <p>anchorwatch.win &mdash; P2A fee-bumping service &mdash; <a href="https://github.com/8144225309/anchorwatch" target="_blank">GitHub</a></p>
   <p style="margin-top:0.5rem;">Built with Bitcoin Core 28.0+ &middot; Core Lightning &middot; RawRelay</p>
 </footer>
 
@@ -1193,15 +1183,6 @@
     }
   }
 
-  // -- Input mode tabs --
-  function setInputMode(mode) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
-    document.getElementById('txid-input').style.display = mode === 'txid' ? 'block' : 'none';
-    document.getElementById('rawtx-input').style.display = mode === 'rawtx' ? 'block' : 'none';
-    clearInputError();
-  }
-
   // -- Custom fee rate toggle --
   function onFeeSelectChange() {
     const sel = document.getElementById('target-fee');
@@ -1220,7 +1201,6 @@
     err.classList.remove('visible');
     err.textContent = '';
     document.getElementById('txid').classList.remove('input-error');
-    document.getElementById('rawtx').classList.remove('input-error');
   }
 
   function showInputError(msg) {
@@ -1231,32 +1211,16 @@
 
   function validateInput() {
     clearInputError();
-    const isTxid = document.getElementById('txid-input').style.display !== 'none';
-
-    if (isTxid) {
-      const val = document.getElementById('txid').value.trim();
-      if (!val) {
-        showInputError('Enter a transaction ID.');
-        document.getElementById('txid').classList.add('input-error');
-        return false;
-      }
-      if (val.length !== 64 || !HEX_RE.test(val)) {
-        showInputError('Transaction ID must be exactly 64 hex characters.');
-        document.getElementById('txid').classList.add('input-error');
-        return false;
-      }
-    } else {
-      const val = document.getElementById('rawtx').value.trim();
-      if (!val) {
-        showInputError('Enter raw transaction hex.');
-        document.getElementById('rawtx').classList.add('input-error');
-        return false;
-      }
-      if (val.length < 20 || !HEX_RE.test(val)) {
-        showInputError('Invalid hex. Paste the full raw transaction.');
-        document.getElementById('rawtx').classList.add('input-error');
-        return false;
-      }
+    const val = document.getElementById('txid').value.trim();
+    if (!val) {
+      showInputError('Enter a transaction ID.');
+      document.getElementById('txid').classList.add('input-error');
+      return false;
+    }
+    if (val.length !== 64 || !HEX_RE.test(val)) {
+      showInputError('Transaction ID must be exactly 64 hex characters.');
+      document.getElementById('txid').classList.add('input-error');
+      return false;
     }
 
     // Validate custom fee
@@ -1457,7 +1421,6 @@
 
   // -- Clear validation on input --
   document.getElementById('txid').addEventListener('input', clearInputError);
-  document.getElementById('rawtx').addEventListener('input', clearInputError);
 
   // -- Mempool P2A simulation --
   window._mempoolStarted = false;
@@ -1573,11 +1536,6 @@
 
   function bumpFromMempool(txid) {
     document.getElementById('txid').value = txid;
-    document.getElementById('txid-input').style.display = 'block';
-    document.getElementById('rawtx-input').style.display = 'none';
-    document.querySelectorAll('.tab').forEach((t, i) => {
-      t.classList.toggle('active', i === 0);
-    });
     showView('input');
   }
 </script>
