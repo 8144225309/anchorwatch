@@ -6,10 +6,14 @@ const cors = require("cors");
 // --- Config ---
 const ZMQ_TX = process.env.ZMQ_TX || "tcp://127.0.0.1:28334";
 const ZMQ_BLOCK = process.env.ZMQ_BLOCK || "tcp://127.0.0.1:28335";
+const ZMQ_BLOCK_TOPIC = process.env.ZMQ_BLOCK_TOPIC || "hashblock"; // "hashblock" or "rawblock"
 const RPC_HOST = process.env.RPC_HOST || "127.0.0.1";
 const RPC_PORT = process.env.RPC_PORT || "8332";
 const RPC_COOKIE = process.env.RPC_COOKIE || "/var/lib/bitcoind/.cookie";
+const RPC_USER = process.env.RPC_USER || "";
+const RPC_PASS = process.env.RPC_PASS || "";
 const API_PORT = process.env.API_PORT || 4000;
+const NETWORK = process.env.NETWORK || "mainnet";
 
 // P2A scriptPubKey: OP_1 OP_PUSHBYTES_2 4e73 (BIP 433)
 const P2A_SCRIPT = Buffer.from("51024e73", "hex");
@@ -23,13 +27,16 @@ let rpcAuth = null;
 
 function getRpcAuth() {
   if (rpcAuth) return rpcAuth;
+  if (RPC_USER && RPC_PASS) {
+    rpcAuth = { user: RPC_USER, pass: RPC_PASS };
+    return rpcAuth;
+  }
   try {
     const cookie = fs.readFileSync(RPC_COOKIE, "utf8").trim();
     const [user, pass] = cookie.split(":");
     rpcAuth = { user, pass };
     return rpcAuth;
   } catch {
-    // Cookie may rotate on restart, clear cache
     rpcAuth = null;
     return null;
   }
@@ -192,12 +199,11 @@ async function subscribeTx() {
 async function subscribeBlock() {
   const sock = new zmq.Subscriber();
   sock.connect(ZMQ_BLOCK);
-  sock.subscribe("hashblock");
-  console.log(`[zmq] subscribed to hashblock at ${ZMQ_BLOCK}`);
+  sock.subscribe(ZMQ_BLOCK_TOPIC);
+  console.log(`[zmq] subscribed to ${ZMQ_BLOCK_TOPIC} at ${ZMQ_BLOCK}`);
 
-  for await (const [topic, blockHashBuf] of sock) {
-    const blockHash = blockHashBuf.toString("hex");
-    console.log(`[block] new block: ${blockHash}`);
+  for await (const [topic] of sock) {
+    console.log(`[block] new block received (${NETWORK})`);
     // Invalidate RPC cookie cache in case of restart
     rpcAuth = null;
     await cleanupConfirmed();
@@ -310,7 +316,7 @@ function formatAge(ms) {
 
 // --- Start ---
 async function main() {
-  console.log("anchorwatch scanner starting...");
+  console.log(`anchorwatch scanner starting (${NETWORK})...`);
   app.listen(API_PORT, "127.0.0.1", () => {
     console.log(`[api] listening on 127.0.0.1:${API_PORT}`);
   });
