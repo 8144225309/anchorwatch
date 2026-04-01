@@ -1236,79 +1236,54 @@
   }
 
   // -- Mock data generators --
-  function randomHex(len) {
-    const chars = '0123456789abcdef';
-    let result = '';
-    for (let i = 0; i < len; i++) result += chars[Math.floor(Math.random() * 16)];
-    return result;
-  }
-
-  function randomAmount(min, max) {
-    return Math.floor(Math.random() * (max - min) + min);
-  }
-
-  // -- Mock P2A detection --
-  // In production this calls the backend which decodes the tx and scans for 51024e73.
-  // For the demo, ~80% chance it "finds" a P2A, ~20% it doesn't (to show the error state).
-  function mockHasP2A() {
-    return Math.random() > 0.2;
-  }
-
-  // -- Get Quote (mock) --
-  function getQuote() {
+  // -- Get Quote --
+  async function getQuote() {
     if (!validateInput()) return;
 
-    // Simulate backend lookup
-    if (!mockHasP2A()) {
-      showErrorView(
-        'No P2A anchor output found',
-        'This transaction doesn\'t have a Pay-to-Anchor (BIP 433) output. ' +
-        'We can only CPFP fee-bump transactions that include an anyone-can-spend P2A anchor. ' +
-        'Your wallet or LN implementation needs to support BIP 433 for this to work.'
-      );
-      return;
-    }
-
-    const parentSize = randomAmount(180, 450);
-    const currentFee = randomAmount(1, 5);
     const sel = document.getElementById('target-fee').value;
-    let targetFee;
+    let targetFeeRate;
     if (sel === 'custom') {
-      targetFee = parseInt(document.getElementById('custom-fee-input').value) || 10;
+      targetFeeRate = parseInt(document.getElementById('custom-fee-input').value) || 10;
     } else if (sel === 'next') {
-      targetFee = randomAmount(10, 18);
+      targetFeeRate = 0; // server will estimate
     } else if (sel === '3') {
-      targetFee = randomAmount(6, 12);
+      targetFeeRate = 0;
     } else {
-      targetFee = randomAmount(3, 8);
+      targetFeeRate = 0;
     }
 
-    // Ensure target > current
-    if (targetFee <= currentFee) targetFee = currentFee + randomAmount(2, 6);
+    try {
+      const resp = await fetch('/api/bump/quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ txid, targetFeeRate }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        showErrorView(data.error || 'Quote failed', data.error || 'Could not get a quote for this transaction.');
+        return;
+      }
 
-    const childSize = 110;
-    const deficit = (targetFee * (parentSize + childSize)) - (currentFee * parentSize);
-    const serviceFee = Math.ceil(deficit * 0.05);
-    const total = deficit + serviceFee;
+      const q = data.quote;
+      window._quoteData = data;
 
-    document.getElementById('q-current-fee').textContent = currentFee + ' sat/vB';
-    document.getElementById('q-target-fee').textContent = targetFee + ' sat/vB';
-    document.getElementById('q-service-fee').textContent = serviceFee.toLocaleString() + ' sats';
-    document.getElementById('q-total').textContent = total.toLocaleString() + ' sats';
+      document.getElementById('q-current-fee').textContent = q.parentFeeRate + ' sat/vB';
+      document.getElementById('q-target-fee').textContent = q.targetFeeRate + ' sat/vB';
+      document.getElementById('q-service-fee').textContent = q.serviceFee.toLocaleString() + ' sats';
+      document.getElementById('q-total').textContent = q.totalSats.toLocaleString() + ' sats';
 
-    // Technical details
-    document.getElementById('q-parent-size').textContent = parentSize + ' vB';
-    document.getElementById('q-child-size').textContent = '~' + childSize + ' vB';
-    document.getElementById('q-anchor-idx').textContent = 'vout:' + randomAmount(1, 4);
-    document.getElementById('q-deficit').textContent = deficit.toLocaleString() + ' sats';
+      document.getElementById('q-parent-size').textContent = q.parentVsize + ' vB';
+      document.getElementById('q-child-size').textContent = '~' + q.childVsize + ' vB';
+      document.getElementById('q-anchor-idx').textContent = 'vout:' + data.p2aVout;
+      document.getElementById('q-deficit').textContent = q.feeDeficit.toLocaleString() + ' sats';
 
-    // Collapse details by default
-    document.getElementById('quote-details').classList.remove('open');
-    document.querySelector('.details-toggle').classList.remove('open');
+      document.getElementById('quote-details').classList.remove('open');
+      document.querySelector('.details-toggle').classList.remove('open');
 
-    window._mockTotal = total;
-    window._mockTargetFee = targetFee;
-    showView('quote');
+      showView('quote');
+    } catch (err) {
+      showErrorView('Connection error', 'Could not reach the server. Please try again.');
+    }
   }
 
   // -- Show error view --
@@ -1326,13 +1301,33 @@
     content.classList.toggle('open');
   }
 
-  // -- Request Invoice (mock) --
-  function requestInvoice() {
-    const mockInvoice = 'lnbc' + window._mockTotal + 'n1pj' + randomHex(200);
-    document.getElementById('invoice-str').textContent = mockInvoice;
-    document.getElementById('copy-hint').textContent = 'Click to copy invoice';
-    drawMockQR();
-    showView('payment');
+  // -- Request Invoice --
+  async function requestInvoice() {
+    if (!window._quoteData) return;
+    const data = window._quoteData;
+    try {
+      const resp = await fetch('/api/bump/pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ txid: data.txid, targetFeeRate: data.quote.targetFeeRate }),
+      });
+      const inv = await resp.json();
+      if (!resp.ok) {
+        showErrorView(inv.error || 'Invoice failed', inv.error || 'Could not generate invoice.');
+        return;
+      }
+
+      window._paymentHash = inv.paymentHash;
+      document.getElementById('invoice-str').textContent = inv.bolt11;
+      document.getElementById('copy-hint').textContent = 'Click to copy invoice';
+      drawMockQR();
+      showView('payment');
+
+      // Start polling for payment
+      pollPayment(inv.paymentHash);
+    } catch (err) {
+      showErrorView('Connection error', 'Could not reach the server.');
+    }
   }
 
   // -- Copy invoice --
@@ -1386,37 +1381,70 @@
     }
   }
 
-  // -- Simulate payment (demo mode) --
-  function simulatePayment() {
-    showView('broadcasting');
-    setTimeout(() => {
-      const parentTxid = randomHex(64);
-      const childTxid = randomHex(64);
-      document.getElementById('c-parent-txid').textContent = parentTxid.slice(0, 16) + '...' + parentTxid.slice(-8);
-      document.getElementById('c-child-txid').textContent = childTxid.slice(0, 16) + '...' + childTxid.slice(-8);
-      document.getElementById('c-feerate').textContent = (window._mockTargetFee || 12) + '.0 sat/vB';
-      document.getElementById('c-paid').textContent = (window._mockTotal || 3749).toLocaleString() + ' sats';
-      showView('confirmed');
-    }, 2500);
+  // -- Poll for payment ---
+  function pollPayment(paymentHash) {
+    window._paymentPoll = setInterval(async () => {
+      try {
+        const resp = await fetch(`/api/bump/status/${paymentHash}`);
+        const data = await resp.json();
+        if (data.status === 'paid' || data.status === 'bumped') {
+          clearInterval(window._paymentPoll);
+          showView('broadcasting');
+        }
+        if (data.status === 'bumped') {
+          clearInterval(window._paymentPoll);
+          const mempoolBase = getMempoolUrl('').replace(/\/tx\/$/, '');
+          document.getElementById('c-parent-txid').innerHTML = `<a href="${mempoolBase}/tx/${data.parentTxid}" target="_blank" style="color:var(--accent)">${data.parentTxid.slice(0, 16)}...${data.parentTxid.slice(-8)}</a>`;
+          document.getElementById('c-child-txid').innerHTML = `<a href="${mempoolBase}/tx/${data.childTxid}" target="_blank" style="color:var(--accent)">${data.childTxid.slice(0, 16)}...${data.childTxid.slice(-8)}</a>`;
+          document.getElementById('c-feerate').textContent = data.quote.targetFeeRate + ' sat/vB';
+          document.getElementById('c-paid').textContent = data.quote.totalSats.toLocaleString() + ' sats';
+          showView('confirmed');
+        }
+        if (data.status === 'error') {
+          clearInterval(window._paymentPoll);
+          showErrorView('Bump failed', data.error || 'CPFP transaction could not be broadcast.');
+        }
+      } catch {}
+    }, 2000);
   }
 
-  // -- Check status (mock) --
-  function checkStatus() {
+  // -- Check status --
+  async function checkStatus() {
     const val = document.getElementById('order-id').value.trim();
     const err = document.getElementById('status-error');
     if (!val) {
-      err.textContent = 'Enter an order ID or parent txid.';
+      err.textContent = 'Enter a payment hash or parent txid.';
       err.classList.add('visible');
       return;
     }
     err.classList.remove('visible');
-    // In production: GET /bump/status/{id}
-    // Demo: show not-found
-    showErrorView(
-      'Order not found',
-      'No bump order matches "' + val.slice(0, 20) + (val.length > 20 ? '...' : '') +
-      '". Check your order ID or parent txid and try again.'
-    );
+    try {
+      const resp = await fetch(`/api/bump/status/${val}`);
+      const data = await resp.json();
+      if (!resp.ok) {
+        showErrorView('Order not found', 'No bump order matches "' + val.slice(0, 20) + (val.length > 20 ? '...' : '') + '".');
+        return;
+      }
+      if (data.status === 'bumped') {
+        const mempoolBase = getMempoolUrl('').replace(/\/tx\/$/, '');
+        document.getElementById('c-parent-txid').innerHTML = `<a href="${mempoolBase}/tx/${data.parentTxid}" target="_blank" style="color:var(--accent)">${data.parentTxid.slice(0, 16)}...${data.parentTxid.slice(-8)}</a>`;
+        document.getElementById('c-child-txid').innerHTML = `<a href="${mempoolBase}/tx/${data.childTxid}" target="_blank" style="color:var(--accent)">${data.childTxid.slice(0, 16)}...${data.childTxid.slice(-8)}</a>`;
+        document.getElementById('c-feerate').textContent = data.quote.targetFeeRate + ' sat/vB';
+        document.getElementById('c-paid').textContent = data.quote.totalSats.toLocaleString() + ' sats';
+        showView('confirmed');
+      } else if (data.status === 'invoiced') {
+        window._paymentHash = data.paymentHash;
+        document.getElementById('invoice-str').textContent = 'Payment pending...';
+        showView('payment');
+        pollPayment(data.paymentHash);
+      } else if (data.status === 'error') {
+        showErrorView('Bump failed', data.error);
+      } else {
+        showErrorView('Order status: ' + data.status, 'Payment hash: ' + data.paymentHash);
+      }
+    } catch {
+      showErrorView('Connection error', 'Could not reach the server.');
+    }
   }
 
   // -- Clear validation on input --

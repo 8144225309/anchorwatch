@@ -1,0 +1,13 @@
+{
+  "name": "anchorwatch-bump-service",
+  "version": "0.1.0",
+  "description": "P2A anchor CPFP bump service for anchorwatch.win",
+  "main": "bump.js",
+  "scripts": {
+    "start": "node bump.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "cors": "^2.8.5"
+  }
+}
