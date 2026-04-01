@@ -812,7 +812,7 @@
     <a href="#" onclick="showView('input')">Bump</a>
     <a href="#" onclick="showView('mempool')">Mempool</a>
     <a href="#" onclick="showView('status-check')">Status</a>
-    <a href="/soup">Soup</a>
+    <a href="#" onclick="showView('soup')">Soup</a>
     <a href="https://github.com/8144225309/anchorwatch" target="_blank">GitHub</a>
   </nav>
 </header>
@@ -1126,6 +1126,60 @@
   </div>
 </div>
 
+<!-- Soup Wallet -->
+<div id="soup-section" style="display:none;">
+  <div style="text-align:center;padding:4rem 2rem 2rem;max-width:720px;margin:0 auto;">
+    <div style="width:80px;height:80px;background:var(--accent);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:42px;margin:0 auto 1.5rem;">&#x1F372;</div>
+    <h1 style="font-size:2.5rem;font-weight:700;letter-spacing:-0.03em;margin-bottom:0.5rem;">
+      Soup <span style="color:var(--accent)">Wallet</span>
+    </h1>
+    <p style="color:var(--text-dim);font-size:1.2rem;margin-bottom:2rem;">
+      The first SuperScalar-capable Bitcoin wallet.
+    </p>
+  </div>
+
+  <div style="max-width:800px;margin:0 auto;padding:0 2rem 3rem;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.5rem;margin-bottom:3rem;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;">
+        <div style="font-size:1.5rem;margin-bottom:0.75rem;">&#x26A1;</div>
+        <h3 style="font-size:1rem;margin-bottom:0.5rem;">Lightning Native</h3>
+        <p style="color:var(--text-dim);font-size:0.85rem;">Send and receive Lightning payments instantly. Powered by channel factories that share UTXOs efficiently.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;">
+        <div style="font-size:1.5rem;margin-bottom:0.75rem;">&#x1F3ED;</div>
+        <h3 style="font-size:1rem;margin-bottom:0.5rem;">SuperScalar Factories</h3>
+        <p style="color:var(--text-dim);font-size:0.85rem;">Join UTXO sharing relationships via Decker-Wattenhofer channel factories. More channels, less on-chain footprint.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;">
+        <div style="font-size:1.5rem;margin-bottom:0.75rem;">&#x2693;</div>
+        <h3 style="font-size:1rem;margin-bottom:0.5rem;">P2A Fee Bumping</h3>
+        <p style="color:var(--text-dim);font-size:0.85rem;">Built-in anchor output support. Bump stuck transactions in high-fee environments without coordinating signatures.</p>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2rem;text-align:center;margin-bottom:2rem;">
+      <h3 style="font-size:1.1rem;margin-bottom:0.75rem;">How it works</h3>
+      <div style="display:flex;align-items:center;justify-content:center;gap:0.75rem;flex-wrap:wrap;color:var(--text-dim);font-size:0.9rem;">
+        <span style="background:var(--surface2);padding:0.5rem 1rem;border-radius:8px;color:var(--text);">Create wallet</span>
+        <span>&#x2192;</span>
+        <span style="background:var(--surface2);padding:0.5rem 1rem;border-radius:8px;color:var(--text);">Join factory</span>
+        <span>&#x2192;</span>
+        <span style="background:var(--surface2);padding:0.5rem 1rem;border-radius:8px;color:var(--text);">Get channels</span>
+        <span>&#x2192;</span>
+        <span style="background:var(--accent);padding:0.5rem 1rem;border-radius:8px;color:#000;font-weight:600;">Send &amp; receive</span>
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <p style="color:var(--text-dim);font-size:0.9rem;margin-bottom:1rem;">Coming soon. Building in public.</p>
+      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+        <a href="https://github.com/8144225309/SuperScalar" target="_blank" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.7rem 1.5rem;color:var(--text);text-decoration:none;font-size:0.9rem;transition:border-color 0.2s;">SuperScalar on GitHub</a>
+        <a href="#" onclick="showView('input');return false;" style="background:var(--accent);border-radius:8px;padding:0.7rem 1.5rem;color:#000;text-decoration:none;font-size:0.9rem;font-weight:600;">Try P2A Bumping</a>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Footer -->
 <footer>
   <p>anchorwatch.win &mdash; P2A fee-bumping service &mdash; <a href="https://github.com/8144225309/anchorwatch" target="_blank">GitHub</a></p>
@@ -1145,8 +1199,23 @@
     const progress = document.getElementById('progressSteps');
     const mempoolSection = document.getElementById('mempool-section');
     const infoGrid = document.getElementById('info-grid');
+    const soupSection = document.getElementById('soup-section');
+    const mainCard = document.querySelector('.main-card');
+    const footer = document.querySelector('footer');
 
-    if (name === 'mempool') {
+    // Hide soup by default
+    soupSection.style.display = 'none';
+    if (mainCard) mainCard.style.display = '';
+    if (footer) footer.style.display = '';
+
+    if (name === 'soup') {
+      hero.style.display = 'none';
+      progress.style.display = 'none';
+      mempoolSection.style.display = 'none';
+      infoGrid.style.display = 'none';
+      soupSection.style.display = 'block';
+      if (mainCard) mainCard.style.display = 'none';
+    } else if (name === 'mempool') {
       hero.style.display = 'none';
       progress.style.display = 'none';
       mempoolSection.style.display = 'block';
