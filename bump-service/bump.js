@@ -46,7 +46,7 @@ function lightningCli(cmd) {
 }
 
 function btcRpc(method, ...params) {
-  const paramStr = params.map((p) => JSON.stringify(p)).join(" ");
+  const paramStr = params.map((p) => typeof p === "object" ? "'" + JSON.stringify(p) + "'" : String(p)).join(" ");
   const result = bitcoinCli(`${method} ${paramStr}`, false);
   try {
     return JSON.parse(result);
@@ -56,7 +56,7 @@ function btcRpc(method, ...params) {
 }
 
 function walletRpc(method, ...params) {
-  const paramStr = params.map((p) => JSON.stringify(p)).join(" ");
+  const paramStr = params.map((p) => typeof p === "object" ? "'" + JSON.stringify(p) + "'" : String(p)).join(" ");
   const result = bitcoinCli(`${method} ${paramStr}`, true);
   try {
     return JSON.parse(result);
