@@ -20,6 +20,9 @@ const P2A_SCRIPT = Buffer.from("51024e73", "hex");
 
 // --- State ---
 const p2aTxs = new Map(); // txid -> { txid, feeRate, size, age, vout, value }
+let lastBlockSeen = 0;       // timestamp of last ZMQ block
+let lastRpcSuccess = 0;      // timestamp of last successful RPC call
+let rpcFailCount = 0;        // consecutive RPC failures
 
 // --- RPC helper ---
 const fs = require("fs");
@@ -172,13 +175,15 @@ async function subscribeTx() {
       const txid = decoded.txid;
       const size = decoded.vsize || decoded.size;
       // Fee requires knowing input values, use getmempoolentry instead
-      let feeRate = 0;
+      let feeRate = null;
       try {
         const entry = await rpcCall("getmempoolentry", [txid]);
         const feeSats = Math.round(entry.fees.base * 1e8);
-        feeRate = Math.round(feeSats / size);
+        feeRate = Math.round((feeSats / size) * 10) / 10; // keep 1 decimal for sub-1 rates
+        lastRpcSuccess = Date.now();
+        rpcFailCount = 0;
       } catch {
-        // Tx may have confirmed already
+        // Tx may have confirmed already, or RPC is down — feeRate stays null
       }
 
       p2aTxs.set(txid, {
@@ -203,6 +208,7 @@ async function subscribeBlock() {
   console.log(`[zmq] subscribed to ${ZMQ_BLOCK_TOPIC} at ${ZMQ_BLOCK}`);
 
   for await (const [topic] of sock) {
+    lastBlockSeen = Date.now();
     console.log(`[block] new block received (${NETWORK})`);
     // Invalidate RPC cookie cache in case of restart
     rpcAuth = null;
@@ -214,6 +220,8 @@ async function cleanupConfirmed() {
   if (p2aTxs.size === 0) return;
   try {
     const mempool = await rpcCall("getrawmempool");
+    lastRpcSuccess = Date.now();
+    rpcFailCount = 0;
     const mempoolSet = new Set(mempool);
     let removed = 0;
     for (const txid of p2aTxs.keys()) {
@@ -226,15 +234,25 @@ async function cleanupConfirmed() {
       console.log(`[cleanup] removed ${removed} confirmed/evicted txs, ${p2aTxs.size} remaining`);
     }
   } catch (err) {
-    console.error("[cleanup] error:", err.message);
+    rpcFailCount++;
+    console.error(`[cleanup] error (fail #${rpcFailCount}):`, err.message);
   }
 }
+
+// --- Periodic reconciliation (independent of ZMQ) ---
+setInterval(async () => {
+  try {
+    await cleanupConfirmed();
+  } catch {}
+}, 30000);
 
 // --- Initial mempool scan ---
 async function scanExistingMempool() {
   console.log("[scan] scanning existing mempool for P2A outputs...");
   try {
     const txids = await rpcCall("getrawmempool");
+    lastRpcSuccess = Date.now();
+    rpcFailCount = 0;
     console.log(`[scan] ${txids.length} txs in mempool`);
     let found = 0;
     // Process in batches to avoid overwhelming RPC
@@ -278,7 +296,10 @@ app.use(cors());
 
 app.get("/api/p2a", (req, res) => {
   const now = Date.now();
+  const stale = lastBlockSeen > 0 && (now - lastBlockSeen) > 30 * 60 * 1000; // >30min since last block
+  const degraded = rpcFailCount >= 3;
   const txs = Array.from(p2aTxs.values())
+    .filter((tx) => tx.feeRate !== null) // don't serve entries where fee lookup failed
     .map((tx) => ({
       txid: tx.txid,
       feeRate: tx.feeRate,
@@ -297,12 +318,26 @@ app.get("/api/p2a", (req, res) => {
       txs.length > 0
         ? +(txs.reduce((s, t) => s + t.feeRate, 0) / txs.length).toFixed(1)
         : 0,
+    stale,
+    degraded,
+    lastBlockSeen: lastBlockSeen || null,
     txs,
   });
 });
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", p2aCount: p2aTxs.size, uptime: process.uptime() });
+  const now = Date.now();
+  const stale = lastBlockSeen > 0 && (now - lastBlockSeen) > 30 * 60 * 1000;
+  const degraded = rpcFailCount >= 3;
+  const status = degraded ? "degraded" : stale ? "stale" : "ok";
+  res.json({
+    status,
+    p2aCount: p2aTxs.size,
+    uptime: process.uptime(),
+    lastBlockSeen: lastBlockSeen || null,
+    lastRpcSuccess: lastRpcSuccess || null,
+    rpcFailCount,
+  });
 });
 
 function formatAge(ms) {

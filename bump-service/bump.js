@@ -168,39 +168,89 @@ function buildCpfpChild(parentTxid, p2aVout, p2aValue, feeDeficit) {
   }
 }
 
+// --- Classify errors as retryable or permanent ---
+function isRetryable(errMsg) {
+  if (errMsg.includes("No UTXOs available")) return true;
+  if (errMsg.includes("No UTXO large enough")) return true;
+  if (errMsg.includes("ETIMEDOUT") || errMsg.includes("timeout")) return true;
+  if (errMsg.includes("Connection refused")) return true;
+  return false;
+}
+
 // --- Invoice polling ---
 setInterval(async () => {
   for (const [paymentHash, order] of orders.entries()) {
-    if (order.status !== "invoiced") continue;
+    // Process invoiced orders — check for payment
+    if (order.status === "invoiced") {
+      try {
+        const inv = lnRpc("listinvoices", `payment_hash=${paymentHash}`);
+        const invoice = inv.invoices && inv.invoices[0];
+        if (invoice && invoice.status === "paid") {
+          console.log(`[bump] payment received for ${paymentHash}`);
+          order.status = "paid";
+          order.paidAt = Date.now();
+          order.retryCount = 0;
+        }
+      } catch (err) {
+        // CLN might be temporarily unavailable
+      }
+    }
 
-    try {
-      const inv = lnRpc("listinvoices", `payment_hash=${paymentHash}`);
-      const invoice = inv.invoices && inv.invoices[0];
-      if (invoice && invoice.status === "paid") {
-        console.log(`[bump] payment received for ${paymentHash}`);
-        order.status = "paid";
-        order.paidAt = Date.now();
+    // Process paid/retry orders — attempt CPFP
+    if (order.status === "paid" || order.status === "retry") {
+      // Pre-flight: verify parent is still in mempool
+      try {
+        btcRpc("getmempoolentry", order.parentTxid);
+      } catch {
+        order.status = "parent_confirmed";
+        console.log(`[bump] parent ${order.parentTxid.slice(0, 16)}... no longer in mempool, skipping CPFP`);
+        continue;
+      }
 
-        // Build and broadcast CPFP
-        try {
-          const result = buildCpfpChild(
-            order.parentTxid,
-            order.p2aVout,
-            order.p2aValue,
-            order.quote.feeDeficit
-          );
-          order.status = "bumped";
-          order.childTxid = result.childTxid;
-          order.bumpedAt = Date.now();
-          console.log(`[bump] CPFP broadcast: ${result.childTxid}`);
-        } catch (err) {
+      try {
+        const result = buildCpfpChild(
+          order.parentTxid,
+          order.p2aVout,
+          order.p2aValue,
+          order.quote.feeDeficit
+        );
+        order.status = "bumped";
+        order.childTxid = result.childTxid;
+        order.bumpedAt = Date.now();
+        console.log(`[bump] CPFP broadcast: ${result.childTxid}`);
+      } catch (err) {
+        order.retryCount = (order.retryCount || 0) + 1;
+        if (isRetryable(err.message) && order.retryCount < 3) {
+          order.status = "retry";
+          console.warn(`[bump] CPFP attempt ${order.retryCount}/3 failed for ${paymentHash}: ${err.message}`);
+        } else {
           order.status = "error";
           order.error = err.message;
-          console.error(`[bump] CPFP failed for ${paymentHash}:`, err.message);
+          console.error(`[bump] CPFP failed permanently for ${paymentHash}:`, err.message);
         }
       }
-    } catch (err) {
-      // CLN might be temporarily unavailable
+    }
+
+    // Track bumped orders — verify child confirms or detect eviction
+    if (order.status === "bumped" && order.childTxid) {
+      try {
+        btcRpc("getmempoolentry", order.childTxid);
+        // Still in mempool — waiting for confirmation, that's fine
+      } catch {
+        // Not in mempool — either confirmed or evicted
+        try {
+          const rawHex = btcRpc("getrawtransaction", order.childTxid);
+          // If getrawtransaction succeeds (with txindex), it confirmed
+          order.status = "confirmed";
+          order.confirmedAt = Date.now();
+          console.log(`[bump] child ${order.childTxid.slice(0, 16)}... confirmed`);
+        } catch {
+          // Not in mempool AND not on chain — evicted
+          order.status = "stuck";
+          order.error = "CPFP child evicted from mempool without confirming";
+          console.warn(`[bump] child ${order.childTxid.slice(0, 16)}... evicted — order stuck`);
+        }
+      }
     }
   }
 }, 2000);
@@ -381,6 +431,8 @@ app.get("/api/bump/status/:id", (req, res) => {
     createdAt: order.createdAt,
     paidAt: order.paidAt || null,
     bumpedAt: order.bumpedAt || null,
+    confirmedAt: order.confirmedAt || null,
+    retryCount: order.retryCount || 0,
   });
 });
 
