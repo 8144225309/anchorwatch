@@ -363,6 +363,23 @@ app.post("/api/bump/pay", (req, res) => {
       return res.status(400).json({ error: "Transaction already meets target fee rate" });
     }
 
+    // Check for existing active invoice for this txid (prevent spam)
+    const MAX_ACTIVE_PER_TXID = 2;
+    const activeForTxid = Array.from(orders.values()).filter(
+      (o) => o.parentTxid === txid && o.status === "invoiced" && (Date.now() - o.createdAt) < 600000
+    );
+    if (activeForTxid.length >= MAX_ACTIVE_PER_TXID) {
+      // Return the most recent existing invoice instead of creating a new one
+      const existing = activeForTxid[activeForTxid.length - 1];
+      return res.json({
+        paymentHash: existing.paymentHash,
+        bolt11: existing.bolt11,
+        quote: existing.quote,
+        expiresAt: existing.createdAt + 600000,
+        reused: true,
+      });
+    }
+
     // Generate Lightning invoice
     const label = `bump-${txid.slice(0, 8)}-${Date.now()}`;
     const description = `AnchorWatch bump: ${txid.slice(0, 16)}... to ${targetFeeRate} sat/vB`;
